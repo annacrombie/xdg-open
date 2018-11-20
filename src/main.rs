@@ -47,7 +47,7 @@ fn get_mime(path: &str) -> Option<Mime> {
         None            => OsStr::new("")
     }.to_string_lossy();
 
-    mime_guess::get_mime_type_opt(&ext)
+    mime::get_mime_type_opt(&ext)
 }
 
 fn check_regex(path: &str) -> Option<Mime> {
@@ -86,7 +86,7 @@ fn parse_options() -> ArgMatches<'static> {
     App::new("xdg-open (not)")
         .version("0.1.0")
         .author("Stone Tickle")
-        .about("lightweight clone of xdg-open, looks for a mime map file in $XDG_DATA_HOME/mime_map.toml or $MIME_MAP_FILE")
+        .about("lightweight clone of xdg-open, looks for a mime map file in\n$XDG_DATA_HOME/mime_map.toml or $MIME_MAP_FILE")
         .setting(AppSettings::TrailingVarArg)
         .arg(Arg::with_name("manual")
              .help("does nothing")
@@ -94,6 +94,10 @@ fn parse_options() -> ArgMatches<'static> {
         .arg(Arg::with_name("paths")
              .required(true)
              .multiple(true))
+        .arg(Arg::with_name("verbose")
+             .help("set verbosity")
+             .short("V")
+             .long("verbose"))
         .get_matches()
 }
 
@@ -102,7 +106,7 @@ fn main() {
     let paths: Vec<&str> = options.values_of("paths").unwrap().collect();
     let map = read_toml();
     for path in paths {
-        //println!("processing: {:?}:", path);
+        if options.is_present("verbose") { println!("processing {:?}:", path); }
 
         let mime: Mime = match check_regex(path) {
             Some(m) => m,
@@ -112,7 +116,7 @@ fn main() {
             }
         };
 
-        //println!("  mime type: {:?}", mime);
+        if options.is_present("verbose") { println!("  mime type: {:?}", mime); }
 
         let action = match mime.clone() {
             Mime(top, bot, _) => {
@@ -125,11 +129,12 @@ fn main() {
 
         match action {
             Some(thing) => {
-                //println!("  taking action: {:?}", thing.as_str().unwrap());
+                if options.is_present("verbose") {
+                    println!("  taking action: {:?}", thing.as_str().unwrap());
+                }
                 spawn(thing.as_str().unwrap(), path);
             },
             None => {
-                //println!("  no action found");
                 eprintln!("I don't know how to open '{}' ({})", path, &mime.to_string());
                 continue;
             }
